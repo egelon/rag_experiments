@@ -65,9 +65,9 @@ Centralized configuration management.
 
 ## App Setup
 
-Checkout the repository
-Make sure you have python 3.13 or higher, and it is set in PATH correctly
-Run setup.bat - this will create a python virtual environment and download required dependencies
+- Checkout the repository
+- Make sure you have python 3.13 or higher, and it is set in PATH correctly
+- Run setup.bat - this will create a python virtual environment and download required dependencies
 
 ## App Execution
 

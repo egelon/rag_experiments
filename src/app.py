@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import shutil
+import time
 from pathlib import Path
 from langchain_openai.chat_models import ChatOpenAI
 
@@ -56,8 +57,13 @@ if uploaded_files:
         st.write(f"📄 {uploaded_file.name}")
     
     # Upload button
-    if st.button("📤 Upload Files to input_files Directory"):
+    if st.button("📤 Upload and process files"):
         uploaded_count = 0
+        
+        # Create containers for temporary messages
+        upload_status_container = st.empty()
+        processing_status_container = st.empty()
+        
         for uploaded_file in uploaded_files:
             try:
                 # Create the file path in input_files directory
@@ -68,21 +74,31 @@ if uploaded_files:
                     f.write(uploaded_file.getbuffer())
                 
                 uploaded_count += 1
-                st.success(f"✅ Successfully uploaded: {uploaded_file.name}")
+                upload_status_container.success(f"✅ Successfully uploaded: {uploaded_file.name}")
+                time.sleep(1)  # Show message for 1 seconds
+                upload_status_container.empty()  # Hide the message
                 
             except Exception as e:
-                st.error(f"❌ Error uploading {uploaded_file.name}: {str(e)}")
+                upload_status_container.error(f"❌ Error uploading {uploaded_file.name}: {str(e)}")
+                time.sleep(1)  # Show error for 1 seconds
+                upload_status_container.empty()  # Hide the message
         
         if uploaded_count > 0:
-            st.success(f"🎉 Successfully uploaded {uploaded_count} file(s) to input_files directory!")
+            upload_status_container.success(f"🎉 Successfully uploaded {uploaded_count} file(s) to input_files directory!")
+            time.sleep(1)  # Show message for 1 seconds
+            upload_status_container.empty()  # Hide the message
             
             # Process the uploaded files automatically
-            st.info("🔄 Processing uploaded files...")
+            processing_status_container.info("🔄 Processing uploaded files...")
             try:
                 process_input_files()
-                st.success("✅ Files processed successfully! Markdown files created in processed_files directory.")
+                processing_status_container.success("✅ Files processed successfully! Markdown files created in processed_files directory.")
+                time.sleep(2)  # Show success message for 2 seconds
+                processing_status_container.empty()  # Hide the message
             except Exception as e:
-                st.error(f"❌ Error processing files: {str(e)}")
+                processing_status_container.error(f"❌ Error processing files: {str(e)}")
+                time.sleep(2)  # Show error for 2 seconds
+                processing_status_container.empty()  # Hide the message
 
 # Display existing files in input_files directory
 st.header("📂 Current Files in input_files Directory")

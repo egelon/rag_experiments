@@ -247,12 +247,15 @@ class RAGController:
         
         try:
             if context:
-                # Format context into the message
-                context_text = "\n\n".join([doc.page_content for doc in context])
-                full_message = f"Here is additional context:\n{context_text}\n\nThese are known facts, which you must use in order to answer the user's question.\n\nQuestion: {message}"
+                # Format context into the message with numbered snippets
+                numbered_snippets = [f"[{i+1}] {doc.page_content}" for i, doc in enumerate(context)]
+                context_text = "\n\n".join(numbered_snippets)
+                print(f"Context: {context_text}")
+                n = len(context)
+                full_message = f"Here are {n} text snippets with additional context. Each snippet starts with its ID in square brackets, before the text, like so: '[1] text'\n\n{context_text}\n\nThese are known facts, which you must use in order to answer the user's question. Always cite the IDs of the snippets, from which you've chosen facts for your answer. Your answer may contain multiple facts from multiple snippets\. Always cite the ID of the relevant snippet after each fact in the answer.n\nQuestion: {message}"
             else:
                 full_message = message
-            
+            print(f"Full message: {full_message}")
             response = self._chat_model.invoke(full_message)
             return response.content
         except Exception as e:

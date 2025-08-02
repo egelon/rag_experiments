@@ -263,3 +263,11 @@ if __name__ == "__main__":
         print("Index loaded successfully")
     else:
         print("Index not loaded")
+    print("Test with 3 items via direct similarity search:")
+    results = processor.vectorstore.similarity_search_with_score("Hubble's Advanced Camera for Surveys has found five new moons around Jupiter", 3, filter={"source": "Hubble"})
+    print(results)
+
+    print("Test with 6 items via retriever:")
+    six_item_retriever = processor.vectorstore.get_retriever({'k': 6})
+    results = six_item_retriever.invoke("Jupiter's Gravity tugs at ice fields on Europa")
+    print(results)

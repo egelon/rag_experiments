@@ -1,5 +1,5 @@
-# rag_experiments
-A simple Retrieval-Augmented Generation (RAG) application that processes user queries based on a small dataset of documents.
+## Overview
+
 The RAG application follows the Model-View-Controller (MVC) architectural pattern.
 
 ## Architecture Components
@@ -49,26 +49,9 @@ Centralized configuration management.
 ```python
 # 1. User provides API key in UI
 # 2. UI updates Config with the key
-# 3. User picks a chat model
-# 4. UI updates COnfig with chat model
-# 5. UI initializes Controller with Config
-# 6. Controller initializes Models with API key
-# 7. User uploads PDFs
-# 8. User triggers document processing
-# 9. PDFs are processed - their text is stripped and saved in *.md files in processed_files
-# 10. User triggers index generation
-# 11. Index is generated and stored in faiss_index
-# 12. user posts a question, and picks how many chunks to fetch as additional context
-# 13. Controller coordinates the process
-# 14. Results displayed in UI
+# 3. UI initializes Controller with Config
+# 4. Controller initializes Models with API key
+# 5. User triggers document processing
+# 6. Controller coordinates the process
+# 7. Results displayed in UI
 ```
-
-## App Setup
-
-- Checkout the repository
-- Make sure you have python 3.13 or higher, and it is set in PATH correctly
-- Run setup.bat - this will create a python virtual environment and download required dependencies
-
-## App Execution
-
-Run start_app.bat after you've performed the setup - this will start the streamlit UI on http://localhost:8501/

@@ -190,56 +190,7 @@ class RAGController:
             return self.query_service.similarity_search_with_score(query, k, filter)
         else:
             return self.query_service.similarity_search(query, k, filter)
-    
-    def search_mmr(
-        self,
-        query: str,
-        k: Optional[int] = None,
-        fetch_k: Optional[int] = None,
-        lambda_mult: Optional[float] = None,
-        filter: Optional[Dict] = None
-    ) -> List[Document]:
-        """
-        Perform Maximum Marginal Relevance search.
-        
-        Args:
-            query: Search query
-            k: Number of results
-            fetch_k: Number of documents to fetch before reranking
-            lambda_mult: Balance between relevance and diversity
-            filter: Optional metadata filter
-            
-        Returns:
-            List of documents
-        """
-        if not self.query_service:
-            print("Query service not initialized")
-            return []
-        
-        k = k or self.config.default_search_k
-        fetch_k = fetch_k or self.config.default_fetch_k
-        lambda_mult = lambda_mult or self.config.default_lambda_mult
-        
-        return self.query_service.max_marginal_relevance_search(
-            query, k, fetch_k, lambda_mult, filter
-        )
-    
-    def get_retriever(self, search_kwargs: Optional[Dict] = None):
-        """
-        Get a retriever for use with LangChain chains.
-        
-        Args:
-            search_kwargs: Optional search parameters
-            
-        Returns:
-            Retriever object or None
-        """
-        if not self.query_service:
-            print("Query service not initialized")
-            return None
-        
-        search_kwargs = search_kwargs or {'k': self.config.default_search_k}
-        return self.query_service.get_retriever(search_kwargs)
+
     
     def chat(self, message: str, context: Optional[List[Document]] = None) -> str:
         """

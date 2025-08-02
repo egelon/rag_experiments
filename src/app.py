@@ -8,12 +8,10 @@ from pathlib import Path
 from config import Config
 from controllers import RAGController
 from models import VectorStore
-from DocumentProcessor import DocumentProcessor
+
 
 # Import the process_input_files function from utils
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), 'rag_experiments'))
-from utils import process_input_files
+from utils.utils import process_input_files
 
 st.title("RAG Experiments")
 
@@ -418,11 +416,7 @@ if st.session_state.controller and st.session_state.initialized:
                 "Enter text:",
                 "How many moons does Pluto have?",
             )
-            col1, col2 = st.columns([1, 5])
-            with col1:
-                search_k = st.number_input("Results", min_value=1, max_value=10, value=4)
-            with col2:
-                use_mmr = st.checkbox("Use MMR (diverse results)", value=False)
+            search_k = st.number_input("Results", min_value=1, max_value=10, value=4)
             
             submitted = st.form_submit_button("Submit")
             if submitted:

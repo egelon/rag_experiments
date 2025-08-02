@@ -151,30 +151,7 @@ class VectorStoreWrapper:
         except Exception as e:
             print(f"Error performing similarity search with scores: {str(e)}")
             return []
-    
-    def get_retriever(self, search_kwargs: Optional[dict] = None):
-        """
-        Get a retriever interface for the vector store.
-        
-        Args:
-            search_kwargs: Optional search parameters (e.g., {'k': 4})
-            
-        Returns:
-            VectorStoreRetriever object
-        """
-        try:
-            if not self.vectorstore:
-                print("No vector store exists. Create one first.")
-                return None
-            
-            search_kwargs = search_kwargs or {'k': 4}
-            retriever = self.vectorstore.as_retriever(search_kwargs=search_kwargs)
-            print(f"Created retriever with search kwargs: {search_kwargs}")
-            return retriever
-            
-        except Exception as e:
-            print(f"Error creating retriever: {str(e)}")
-            return None
+
     
     def save(self, index_path: str = "faiss_index") -> bool:
         """
@@ -292,27 +269,3 @@ class VectorStoreWrapper:
             bool: True if vector store is loaded, False otherwise
         """
         return self.vectorstore is not None
-
-
-# Example usage
-if __name__ == "__main__":
-    # Initialize wrapper
-    vs_wrapper = VectorStoreWrapper(
-        embedding_model="text-embedding-ada-002",
-        api_key="your-openai-api-key"  # or set OPENAI_API_KEY environment variable
-    )
-    
-    # Create from texts
-    texts = ["This is a sample text.", "Another sample document."]
-    vs_wrapper.create_from_texts(texts)
-    
-    # Search
-    results = vs_wrapper.similarity_search("sample", k=2)
-    
-    # Get stats
-    stats = vs_wrapper.get_stats()
-    print(f"Vector store stats: {stats}")
-    
-    # Save and load
-    vs_wrapper.save("my_index")
-    vs_wrapper.load("my_index")

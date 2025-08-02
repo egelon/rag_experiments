@@ -28,8 +28,6 @@ class Config:
     
     # Search settings
     default_search_k: int = 4
-    default_fetch_k: int = 20
-    default_lambda_mult: float = 0.5
     
     # Model temperature
     temperature: float = 0.7

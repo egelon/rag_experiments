@@ -1,0 +1,60 @@
+This file contains example queries, in which ChatGPT 4o hallucinates an incorrect response, when forced to give the response without web lookup.
+The same query, when using RAG with our example dataset gives the correct response
+
+--- Query:
+What was the photo number that hubble confirmed new moons of pluto, and untill when was it embargoed?
+
+--- Raw ChatGPT response:
+The discovery of Pluto’s fourth and fifth moons (Kerberos and Styx) was made using the Hubble Space Telescope, and the relevant image that confirmed Pluto's fourth moon (Kerberos) was taken on June 28, 2011, with Hubble’s Wide Field Camera 3 (WFC3).
+
+Photo and Discovery Details:
+Photo number / Hubble image ID: The specific Hubble archive ID for the image used to discover Pluto’s fourth moon Kerberos (then temporarily named P4) is hst_12191_02_wfc3_uvis_f606w_sci.fits, from proposal ID 12191, led by Mark Showalter of the SETI Institute.
+
+The fifth moon Styx was discovered later, in images from June 26, 27, and July 9, 2012, also using WFC3.
+
+Embargo Details:
+For Kerberos (P4): The discovery was made in June 2011. The official announcement was made on July 20, 2011 by NASA.
+
+The embargo on the Hubble image confirming P4 (Kerberos) was lifted on the same day as the press release: July 20, 2011.
+
+NASA typically coordinates embargoes for scientific discoveries through press offices or journals. In this case, the embargo was lifted simultaneously with the public announcement, following standard protocol for press releases of this nature.
+
+If you need the full Hubble data set or proposal info from STScI's archive, I can help extract it in detail.
+
+--- Our response:
+The photo number for the Hubble confirmation of new moons of Pluto is STScI-PRC06-09, and it was embargoed until 1:00 pm (EST) on February 22, 2006.
+
+Document 1:
+
+Explore Hubble
+
+ 1 M I N R E A D
+
+# Hubble Confirms New Moons of Pluto
+
+
+EMBARGOED UNTIL: 1:00 pm (EST) February 22, 2006 PHOTO NO.: STScI-PRC06-09 HUBBLE CONFIRMS NEW MOONS OF PLUTO Anxiously awaited follow-up observations with NASA's Hubble Space Telescope have confirmed the
+Document 2:
+
+Explore Hubble
+
+   3 M I N R E A D
+
+## Hubble Discovers a Fifth Moon Orbiting Pluto
+
+
+Goddard Space Flight Center JUL 11, 2012 ARTICLE This image, taken by NASA's Hubble Space Telescope, shows five moons orbiting the distant, icy dwarf planet Pluto. The green circle marks the newly discovered moon, designated P5, as photographed by Hubble's Wide Field Camera 3 on July 7. Other observations that collectively... A team of astronomers using NASA's Hubble Space Telescope is reporting the discovery o...
+Document 3:
+
+Research Institute in Boulder, Colo., the mission's principal investigator. Pluto's largest moon, Charon, was discovered in 1978 in observations made at the United States Naval Observatory in Washington, D.C. Hubble observations in 2006 uncovered two additional small moons, Nix and Hydra. In 2011 another moon, P4, was found in Hubble data. Provisionally designated S/2012 (134340) 1, the latest moon was detected in nine separate sets of images taken by Hubble's Wide Field Camera 3 on June 26, 27,...
+Document 4:
+
+Laboratory, Johns Hopkins University), and S.A. Stern, A.J. Steffl, and M.W. Buie (Southwest Research Institute).
+
+Related Images & Videos
+
+Hubble Discovers a Fifth Moon Orbiting Pluto
+
+This image, taken by NASA's Hubble Space Telescope, shows five moons orbiting the distant, icy dwarf planet Pluto. The green circle marks the newly discovered moon, designated P5, as photographed by Hubble's Wide Field Camera 3 on July 7. Other observations that collectively...
+
+Hubble Discovers a Fifth Moon Orbi...

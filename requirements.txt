@@ -1,7 +1,9 @@
 # Core dependencies for RAG project
 langchain>=0.0.200       # LangChain for prompt orchestration:contentReference[oaicite:0]{index=0}
+langchain-openai>=0.1.0  # LangChain OpenAI integration
 llama-index>=0.13.0      # LlamaIndex (GPT Index) for data ingestion & retrieval
 openai>=1.0.0            # OpenAI API client (for GPT-4 and other models):contentReference[oaicite:1]{index=1}
 faiss-cpu>=1.7.4         # FAISS vector search library (CPU version):contentReference[oaicite:2]{index=2}
 python-dotenv>=1.0.0     # For loading .env files (API keys, config):contentReference[oaicite:3]{index=3}
-pymupdf4llm>=0.0.27       # For loading .pdf files
+pymupdf4llm>=0.0.27      # For loading .pdf files
+streamlit>=1.29.0        # For the UI

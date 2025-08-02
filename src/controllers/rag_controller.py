@@ -9,6 +9,7 @@ from langchain_community.document_loaders import DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_core.documents import Document
+from langchain_core.messages import SystemMessage, HumanMessage
 
 from models import VectorStore, QueryService
 from config import Config
@@ -58,11 +59,20 @@ class RAGController:
         
         # Initialize chat model
         try:
+            print(f"DEBUG: Initializing ChatOpenAI with temperature: {self.config.temperature}")
             self._chat_model = ChatOpenAI(
                 model=self.config.chat_model,
                 temperature=self.config.temperature,
-                api_key=self.config.openai_api_key
+                api_key=self.config.openai_api_key,
+                seed=self.config.seed,
+                max_tokens=self.config.max_tokens,
+                top_p=self.config.top_p,
+                frequency_penalty=self.config.frequency_penalty,
+                presence_penalty=self.config.presence_penalty,
+                timeout=self.config.timeout,
+                max_retries=self.config.max_retries
             )
+            print(f"DEBUG: ChatOpenAI model created successfully with temperature: {self._chat_model.temperature}")
         except Exception as e:
             return False, f"Failed to initialize chat model: {str(e)}"
         
@@ -252,11 +262,18 @@ class RAGController:
                 context_text = "\n\n".join(numbered_snippets)
                 print(f"Context: {context_text}")
                 n = len(context)
-                full_message = f"Here are {n} text snippets with additional context. Each snippet starts with its ID in square brackets, before the text, like so: '[1] text'\n\n{context_text}\n\nThese are known facts, which you must use in order to answer the user's question. Always cite the IDs of the snippets, from which you've chosen facts for your answer. Your answer may contain multiple facts from multiple snippets\. Always cite the ID of the relevant snippet after each fact in the answer.n\nQuestion: {message}"
+                system_content = f"Here are {n} text snippets with additional context. Each snippet starts with its ID in square brackets, before the text, like so: '[1] text'\n\n{context_text}\n\nThese are known facts, which you must use in order to answer the user's question. Always cite the IDs of the snippets, from which you've chosen facts for your answer. Your answer may contain multiple facts from multiple snippets. Always cite the ID of the relevant snippet after each fact in the answer."
+                messages = [
+                    SystemMessage(content=system_content),
+                    HumanMessage(content=f"Question: {message}")
+                ]
             else:
-                full_message = message
-            print(f"Full message: {full_message}")
-            response = self._chat_model.invoke(full_message)
+                messages = [
+                    HumanMessage(content=message)
+                ]
+            print(f"Messages: {messages}")
+            print(f"DEBUG: Invoking chat model with temperature: {self._chat_model.temperature}")
+            response = self._chat_model.invoke(messages)
             return response.content
         except Exception as e:
             return f"Error generating response: {str(e)}"
@@ -296,10 +313,15 @@ class RAGController:
         Args:
             **kwargs: Configuration parameters to update
         """
+        # Parameters that require chat model reinitialization
+        chat_model_params = {'openai_api_key', 'temperature', 'chat_model'}
+        needs_reinit = any(key in chat_model_params for key in kwargs.keys())
+        
         for key, value in kwargs.items():
             if hasattr(self.config, key):
                 setattr(self.config, key, value)
         
-        # Reinitialize if API key changed
-        if 'openai_api_key' in kwargs:
+        # Reinitialize if any chat model parameter changed
+        if needs_reinit and self._chat_model:
+            print(f"DEBUG: Reinitializing chat model due to config change: {list(kwargs.keys())}")
             self.initialize()

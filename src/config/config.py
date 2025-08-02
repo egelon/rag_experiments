@@ -33,7 +33,14 @@ class Config:
     
     # Model temperature
     temperature: float = 0.7
-    
+    seed: int = 42
+    max_tokens: int = 1000
+    top_p: float = 1.0
+    frequency_penalty: float = 0.0
+    presence_penalty: float = 0.0
+    timeout: float = 30.0
+    max_retries: int = 3
+
     def update_api_key(self, api_key: str):
         """Update the OpenAI API key."""
         self.openai_api_key = api_key
@@ -41,6 +48,47 @@ class Config:
     def update_chat_model(self, model: str):
         """Update the chat model."""
         self.chat_model = model
+    
+    def update_temperature(self, temperature: float) -> tuple[bool, str]:
+        """
+        Update model temperature with validation.
+        
+        Args:
+            temperature: New temperature value (0.0 to 2.0)
+            
+        Returns:
+            tuple: (success, error_message)
+        """
+        # Store original value for rollback
+        original_temperature = self.temperature
+        
+        # Update value
+        self.temperature = temperature
+        
+        # Validate the new configuration
+        is_valid, error_msg = self._validate_temperature()
+        
+        if not is_valid:
+            # Rollback to original value
+            self.temperature = original_temperature
+            return False, error_msg
+        
+        return True, ""
+    
+    def _validate_temperature(self) -> tuple[bool, str]:
+        """
+        Validate temperature parameter.
+        
+        Returns:
+            tuple: (is_valid, error_message)
+        """
+        if self.temperature < 0.0:
+            return False, "Temperature must be non-negative"
+        
+        if self.temperature > 2.0:
+            return False, "Temperature must be 2.0 or less"
+        
+        return True, ""
     
     def update_chunk_config(self, chunk_size: int = None, chunk_overlap: int = None) -> tuple[bool, str]:
         """

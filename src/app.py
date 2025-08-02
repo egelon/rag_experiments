@@ -43,8 +43,7 @@ model_options = {
     "GPT-4.1": "gpt-4.1",
     "GPT-4.1 Nano": "gpt-4.1-nano",
     "GPT-4o": "gpt-4o",
-    "GPT-4o Mini": "gpt-4o-mini",
-    "o4 Mini": "o4-mini"
+    "GPT-4o Mini": "gpt-4o-mini"
 }
 
 # Initialize selected model in session state if not exists
@@ -60,6 +59,10 @@ if 'last_chunk_overlap' not in st.session_state:
     st.session_state.last_chunk_overlap = st.session_state.config.chunk_overlap
 if 'config_changed' not in st.session_state:
     st.session_state.config_changed = False
+
+# Initialize temperature tracking
+if 'last_temperature' not in st.session_state:
+    st.session_state.last_temperature = st.session_state.config.temperature
 
 def on_model_change():
     """Callback function when model selection changes"""
@@ -80,6 +83,51 @@ selected_model = st.sidebar.selectbox(
     index=current_index,
     key="model_selector",
     on_change=on_model_change
+)
+
+# Temperature configuration
+st.sidebar.markdown("---")
+st.sidebar.subheader("⚙️ Model Settings")
+
+def on_temperature_change():
+    """Callback function when temperature changes"""
+    new_temperature = st.session_state.temperature_input
+    
+    # Check if value actually changed
+    if new_temperature != st.session_state.last_temperature:
+        # Update config using the proper config method
+        success, error_msg = st.session_state.config.update_temperature(new_temperature)
+        
+        if not success:
+            st.sidebar.error(f"❌ Invalid temperature: {error_msg}")
+            # Reset input to last valid value
+            st.session_state.temperature_input = st.session_state.last_temperature
+            return
+        
+        # Reinitialize chat model if controller exists
+        if st.session_state.controller and st.session_state.initialized:
+            try:
+                success, error_msg = st.session_state.controller.initialize()
+                if not success:
+                    st.sidebar.error(f"❌ Model reinitialization error: {error_msg}")
+                else:
+                    st.sidebar.success("✅ Model updated with new temperature")
+            except Exception as e:
+                st.sidebar.error(f"❌ Error updating model: {str(e)}")
+        
+        # Update tracking value
+        st.session_state.last_temperature = new_temperature
+
+# Temperature input
+temperature = st.sidebar.slider(
+    "🌡️ Temperature:",
+    min_value=0.0,
+    max_value=2.0,
+    value=st.session_state.config.temperature,
+    step=0.1,
+    help="Controls randomness in responses (0.0 = deterministic, 2.0 = very creative)",
+    key="temperature_input",
+    on_change=on_temperature_change
 )
 
 # Chunk configuration controls

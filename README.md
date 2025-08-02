@@ -72,3 +72,60 @@ Centralized configuration management.
 ## App Execution
 
 Run start_app.bat after you've performed the setup - this will start the streamlit UI on http://localhost:8501/
+
+## Used Tools
+- Python
+- Cursor as IDE
+- pymupdf4llm for parsing raw text from PDFs
+- LangChain for Document ingestion and Chunking
+- FAISS for vector store
+- streamlit for the UI
+- LangChain's OpenAI wrappers for the OpenAI Embeddings for the vector store, and for the chat functionality
+
+## Explanation
+
+This application implements a MVC architecture to process and query PDF documents using OpenAI's language models. The system works by:
+
+1. **Document Processing**: PDF files are parsed using PyMuPDF4LLM, converted to markdown, and then chunked using LangChain's text splitters with configurable chunk sizes (default: 1000 characters with 200 character overlap).
+
+2. **Vector Storage**: Document chunks are embedded using OpenAI's `text-embedding-ada-002` model and stored in a FAISS vector database for efficient similarity search.
+
+3. **Query Processing**: User queries are embedded and matched against stored document chunks using FAISS similarity search, with configurable retrieval count (default: 4 chunks).
+
+4. **Response Generation**: Retrieved chunks provide context to OpenAI's chat models (default: GPT-4o) to generate informed responses.
+
+**Key Tools & Technologies**:
+- **Streamlit**: Web-based user interface
+- **LangChain**: Document processing, chunking, and OpenAI integration
+- **FAISS**: High-performance vector similarity search
+- **OpenAI API**: Embeddings and chat completion
+- **PyMuPDF4LLM**: PDF text extraction
+
+**Key Assumptions**:
+- Users have valid OpenAI API keys
+- Documents are text-based PDFs suitable for extraction
+- Single-user deployment model
+- CPU-based FAISS is sufficient for dataset size
+- Default chunking strategy works for most document types
+- Network connectivity to OpenAI services is reliable, and API rate limits are never reached
+
+## Scalability Considerations
+
+While the current implementation is designed for small datasets, several improvements could be made:
+
+### **Data Handling & Storage**
+- **Database Migration**: Replace FAISS with cloud-native vector databases
+- **Caching Layer**: Add caching for frequently accessed embeddings and query results (Redis perhaps?)
+
+### **Performance Optimization**
+- **GPU Acceleration**: Switch to GPU for faster similarity search on large datasets
+- **Embedding Optimization**: Use local, open-source embedding models to reduce API costs
+- **Chunk Strategy**: Implement a different chunking strategy for better context preservation (chunk at paragraphs, or sentence bounderies)
+- **Connection Pooling**: Optimize OpenAI API usage with connection pooling and rate limiting
+
+### **Architecture Enhancements**
+- **Container Orchestration**: Use Docker iamge for reliable deployment
+
+### **Users & Error handling**
+- **User Management**: Add authentication and authorization for multi-user scenarios
+- **Error Handling**: Robust error handling with retry mechanisms and circuit breakers

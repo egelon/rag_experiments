@@ -1,38 +1,48 @@
+"""
+DocumentProcessor - Refactored to use dependency injection and work with MVC architecture.
+This class now focuses on document processing operations without being coupled to storage.
+"""
 from langchain_community.document_loaders import UnstructuredMarkdownLoader 
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple, Protocol
 import os
-from VectorStoreWrapper import VectorStoreWrapper
+
+
+class VectorStoreInterface(Protocol):
+    """Interface for vector store operations."""
+    def create_from_texts(self, texts: List[str], metadatas: Optional[List[dict]] = None) -> bool: ...
+    def save(self, index_path: str) -> bool: ...
+    def load(self, index_path: str, api_key: str) -> bool: ...
+    def is_loaded(self) -> bool: ...
 
 
 class DocumentProcessor:
     def __init__(
         self, 
+        vector_store: Optional[VectorStoreInterface] = None,
         processed_files_dir: str = "processed_files",
         chunk_size: int = 1000,
-        chunk_overlap: int = 200,
-        embedding_model: str = "text-embedding-ada-002"
+        chunk_overlap: int = 200
     ):
         """
-        Initialize the DocumentProcessor.
+        Initialize the DocumentProcessor with dependency injection.
         
         Args:
+            vector_store: Optional vector store instance (can be injected later)
             processed_files_dir (str): Directory containing processed markdown files
             chunk_size (int): Size of text chunks for splitting
             chunk_overlap (int): Overlap between chunks
-            embedding_model (str): OpenAI embedding model to use
         """
+        self.vector_store = vector_store
         self.processed_files_dir = processed_files_dir
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.embedding_model = embedding_model
         
         # Initialize components
         self.documents = []
         self.chunks = []
-        self.vectorstore = None
         
         # Setup text splitter
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -40,6 +50,15 @@ class DocumentProcessor:
             chunk_overlap=self.chunk_overlap,
             add_start_index=True,
         )
+    
+    def set_vector_store(self, vector_store: VectorStoreInterface):
+        """
+        Inject the vector store dependency.
+        
+        Args:
+            vector_store: Vector store instance to use
+        """
+        self.vector_store = vector_store
     
     def load_documents(self) -> List:
         """
@@ -103,86 +122,75 @@ class DocumentProcessor:
             print(f"Error chunking documents: {str(e)}")
             return []
     
-    def create_index(self, chunks: Optional[List] = None, api_key: Optional[str] = None) -> VectorStoreWrapper:
+    def create_index(self, chunks: Optional[List] = None) -> Tuple[bool, str]:
         """
-        Create a FAISS vector index from document chunks using VectorStoreWrapper.
+        Create a FAISS vector index from document chunks.
         
         Args:
             chunks: List of document chunks. If None, uses self.chunks
-            api_key: OpenAI API key. If None, tries to get from environment
             
         Returns:
-            VectorStoreWrapper instance
+            Tuple[bool, str]: (success, error_message)
         """
         try:
+            if not self.vector_store:
+                return False, "No vector store configured. Call set_vector_store first."
+            
             chunks_to_index = chunks if chunks is not None else self.chunks
             
             if not chunks_to_index:
-                print("No chunks to index. Load and chunk documents first.")
-                return None
+                return False, "No chunks to index. Load and chunk documents first."
             
-            # Get API key
-            openai_api_key = os.getenv("OPENAI_API_KEY") or api_key
-            if not openai_api_key:
-                raise ValueError("OpenAI API key not provided and not found in environment")
-            
-            # Create VectorStoreWrapper
-            vector_wrapper = VectorStoreWrapper(
-                embedding_model=self.embedding_model,
-                api_key=openai_api_key
-            )
-            
-            # Extract text content from document chunks
+            # Extract text content and metadata from document chunks
             chunk_texts = []
+            metadatas = []
+            
             for chunk in chunks_to_index:
                 if hasattr(chunk, 'page_content'):
                     chunk_texts.append(chunk.page_content)
+                    metadatas.append(chunk.metadata if hasattr(chunk, 'metadata') else {})
                 else:
                     chunk_texts.append(str(chunk))
+                    metadatas.append({})
             
             # Create FAISS vectorstore from chunks
-            try:
-                success = vector_wrapper.create_from_chunks(chunk_texts)
-            except Exception as e:
-                print(f"Error creating vector store from chunks: {str(e)}")
-                return None
+            success = self.vector_store.create_from_texts(chunk_texts, metadatas)
             
             if success:
-                self.vectorstore = vector_wrapper
-                print(f"Successfully created FAISS index with {len(chunks_to_index)} chunks using VectorStoreWrapper")
-                return vector_wrapper
+                print(f"Successfully created FAISS index with {len(chunks_to_index)} chunks")
+                return True, ""
             else:
-                print("Failed to create vector store")
-                return None
+                return False, "Failed to create vector store"
             
         except Exception as e:
-            print(f"Error creating index: {str(e)}")
-            return None
+            return False, f"Error creating index: {str(e)}"
     
-    def process_all(self, api_key: Optional[str] = None) -> VectorStoreWrapper:
+    def process_all(self) -> Tuple[bool, str]:
         """
         Complete pipeline: load documents, chunk them, and create index.
         
-        Args:
-            api_key: OpenAI API key
-            
         Returns:
-            VectorStoreWrapper instance
+            Tuple[bool, str]: (success, error_message)
         """
         print("Starting document processing pipeline...")
         
         # Load documents
-        self.load_documents()
+        documents = self.load_documents()
+        if not documents:
+            return False, "Failed to load documents"
         
         # Chunk documents
-        self.chunk_documents()
+        chunks = self.chunk_documents()
+        if not chunks:
+            return False, "Failed to chunk documents"
         
         # Create index
-        self.create_index(api_key=api_key)
+        success, error_msg = self.create_index()
+        if not success:
+            return False, error_msg
         
         print("Document processing pipeline completed!")
-        
-        return self.vectorstore
+        return True, ""
     
     def save_index(self, index_path: str = "faiss_index") -> bool:
         """
@@ -195,79 +203,40 @@ class DocumentProcessor:
             True if successful, False otherwise
         """
         try:
-            if self.vectorstore is None:
-                print("No vectorstore to save. Create index first.")
+            if not self.vector_store:
+                print("No vector store configured.")
                 return False
             
-            return self.vectorstore.save(index_path)
+            return self.vector_store.save(index_path)
             
         except Exception as e:
             print(f"Error saving index: {str(e)}")
             return False
     
-    def load_index(self, index_path: str = "faiss_index", api_key: Optional[str] = None) -> VectorStoreWrapper:
+    def load_index(self, index_path: str = "faiss_index", api_key: str = None) -> bool:
         """
         Load a FAISS index from disk.
         
         Args:
             index_path: Path to load the index from
-            api_key: OpenAI API key
+            api_key: OpenAI API key (required for loading)
             
         Returns:
-            VectorStoreWrapper instance
+            bool: True if successful, False otherwise
         """
         try:
-            # Get API key
-            openai_api_key = api_key or os.getenv("OPENAI_API_KEY")
-            if not openai_api_key:
-                raise ValueError("OpenAI API key not provided and not found in environment")
-            
-            #check if index path exists
-            if not Path(index_path).exists():
-                raise FileNotFoundError(f"Index path does not exist: {index_path}")
-
-            if self.vectorstore is None:
-                print("No vectorstore to load. Create index first.")
+            if not self.vector_store:
+                print("No vector store configured.")
                 return False
             
-            return self.vectorstore.load(index_path)
+            if not api_key:
+                print("API key required for loading index")
+                return False
+            
+            return self.vector_store.load(index_path, api_key)
             
         except Exception as e:
             print(f"Error loading index: {str(e)}")
-            return None
+            return False
 
 
-# Example usage
-if __name__ == "__main__":
-    # Initialize processor
-    processor = DocumentProcessor(
-        processed_files_dir="processed_files",
-        chunk_size=1000,
-        chunk_overlap=200
-    )
-    
-    # Process all documents (you'll need to provide your API key)
-    # vectorstore = processor.process_all(api_key="your-openai-api-key")
-    
-    # Or step by step:
-    documents = processor.load_documents()
-    chunks = processor.chunk_documents(documents)
-    vectorstore = processor.create_index(chunks, api_key="your-openai-api-key")
-    isIndexSaved = processor.save_index()
-    if isIndexSaved:
-        print("Index saved successfully")
-    else:
-        print("Index not saved")
-    isIndexLoaded = processor.load_index()
-    if isIndexLoaded:
-        print("Index loaded successfully")
-    else:
-        print("Index not loaded")
-    print("Test with 3 items via direct similarity search:")
-    results = processor.vectorstore.similarity_search_with_score("Hubble's Advanced Camera for Surveys has found five new moons around Jupiter", 3, filter={"source": "Hubble"})
-    print(results)
-
-    print("Test with 6 items via retriever:")
-    six_item_retriever = processor.vectorstore.get_retriever({'k': 6})
-    results = six_item_retriever.invoke("Jupiter's Gravity tugs at ice fields on Europa")
-    print(results)

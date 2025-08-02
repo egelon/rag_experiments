@@ -58,11 +58,13 @@ def process_input_files():
     Process PDF files from input_files directory and convert them to markdown format.
     Creates processed_files directory if it doesn't exist and saves markdown files there.
     """
-    # Create processed_files directory in the repository root if it doesn't exist
+    # Create processed_files directory in the src folder if it doesn't exist
     try:
-        # Get the repository root using relative path from current file
-        repo_root = pathlib.Path(__file__).parent
-        processed_files_dir = repo_root.resolve() / "processed_files"
+        # Get the src directory using relative path from current file
+        # Current file is at src/rag_experiments/utils.py
+        # Src directory is at ../ from current file
+        src_dir = pathlib.Path(__file__).parent / "../.."
+        processed_files_dir = src_dir.resolve() / "processed_files"
         processed_files_dir.mkdir(exist_ok=True)
         print(f"Using directory: {processed_files_dir.absolute()}")
     except OSError as e:

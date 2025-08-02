@@ -268,6 +268,27 @@ else:
 if st.button(button_text, disabled=create_index_disabled):
     if st.session_state.controller:
         with st.spinner("Processing documents and creating index..."):
+            # Check if processed_files directory is empty and needs PDF processing first
+            processed_files_path = Path(st.session_state.config.processed_files_dir)
+            processed_files_exist = processed_files_path.exists() and any(processed_files_path.glob("*.md"))
+            
+            if not processed_files_exist:
+                # Check if input_files directory has PDF files to process
+                input_files_path = Path(st.session_state.config.input_files_dir)
+                pdf_files_exist = input_files_path.exists() and any(input_files_path.glob("*.pdf"))
+                
+                if pdf_files_exist:
+                    st.info("🔄 No processed files found. Converting PDF files to markdown first...")
+                    try:
+                        process_input_files()
+                        st.success("✅ PDF files converted to markdown successfully!")
+                    except Exception as e:
+                        st.error(f"❌ Error processing PDF files: {str(e)}")
+                        st.stop()
+                else:
+                    st.error("❌ No PDF files found in input_files directory. Please upload some PDF files first.")
+                    st.stop()
+            
             success, error_msg = st.session_state.controller.load_and_process_documents()
             if success:
                 # Save the index

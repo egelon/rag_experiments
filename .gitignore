@@ -208,3 +208,4 @@ __marimo__/
 
 #processed files
 processed_files/
+faiss_index/

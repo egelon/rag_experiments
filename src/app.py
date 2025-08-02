@@ -33,6 +33,11 @@ st.sidebar.markdown("""
 [Get your OpenAI API key](https://platform.openai.com/account/api-keys)
 """)
 
+# Check if API key is provided and valid before showing other config options
+if not openai_api_key or not openai_api_key.startswith("sk-"):
+    st.info("🔑 Please enter your OpenAI API key in the sidebar to access the application features.")
+    st.stop()
+
 # Model selection dropdown
 model_options = {
     "GPT-4.1": "gpt-4.1",
@@ -47,6 +52,14 @@ if 'selected_model_key' not in st.session_state:
     st.session_state.selected_model_key = "GPT-4o Mini"  # Default
     # Initialize config with the default model
     st.session_state.config.update_chat_model(model_options[st.session_state.selected_model_key])
+
+# Initialize chunk configuration tracking
+if 'last_chunk_size' not in st.session_state:
+    st.session_state.last_chunk_size = st.session_state.config.chunk_size
+if 'last_chunk_overlap' not in st.session_state:
+    st.session_state.last_chunk_overlap = st.session_state.config.chunk_overlap
+if 'config_changed' not in st.session_state:
+    st.session_state.config_changed = False
 
 def on_model_change():
     """Callback function when model selection changes"""
@@ -68,6 +81,84 @@ selected_model = st.sidebar.selectbox(
     key="model_selector",
     on_change=on_model_change
 )
+
+# Chunk configuration controls
+st.sidebar.markdown("---")
+st.sidebar.subheader("📄 Document Processing")
+
+def on_chunk_config_change():
+    """Callback function when chunk configuration changes"""
+    # Check if values actually changed
+    new_chunk_size = st.session_state.chunk_size_input
+    new_chunk_overlap = st.session_state.chunk_overlap_input
+    
+    if (new_chunk_size != st.session_state.last_chunk_size or 
+        new_chunk_overlap != st.session_state.last_chunk_overlap):
+        
+        # Update config using the proper config method
+        success, error_msg = st.session_state.config.update_chunk_config(
+            chunk_size=new_chunk_size,
+            chunk_overlap=new_chunk_overlap
+        )
+        
+        if not success:
+            st.sidebar.error(f"❌ Invalid configuration: {error_msg}")
+            # Reset inputs to last valid values
+            st.session_state.chunk_size_input = st.session_state.last_chunk_size
+            st.session_state.chunk_overlap_input = st.session_state.last_chunk_overlap
+            return
+        
+        # Mark config as changed
+        st.session_state.config_changed = True
+        
+        # Delete existing index if controller is initialized
+        if st.session_state.controller and st.session_state.initialized:
+            # Try to delete the index files
+            try:
+                if Path("faiss_index").exists():
+                    shutil.rmtree("faiss_index")
+                    st.sidebar.warning("⚠️ Index deleted due to configuration change. Please rebuild the index.")
+                    
+                # Reinitialize controller with new config
+                st.session_state.controller = RAGController(st.session_state.config)
+                success, error_msg = st.session_state.controller.initialize()
+                if not success:
+                    st.sidebar.error(f"❌ Reinitialization error: {error_msg}")
+                    
+            except Exception as e:
+                st.sidebar.error(f"❌ Error deleting index: {str(e)}")
+        
+        # Update tracking values
+        st.session_state.last_chunk_size = new_chunk_size
+        st.session_state.last_chunk_overlap = new_chunk_overlap
+
+# Chunk size input
+chunk_size = st.sidebar.number_input(
+    "Chunk Size (characters):",
+    min_value=100,
+    max_value=4000,
+    value=st.session_state.config.chunk_size,
+    step=100,
+    help="Size of each text chunk for processing",
+    key="chunk_size_input",
+    on_change=on_chunk_config_change
+)
+
+# Chunk overlap input
+chunk_overlap = st.sidebar.number_input(
+    "Chunk Overlap (characters):",
+    min_value=0,
+    max_value=min(chunk_size - 1, 1000),
+    value=st.session_state.config.chunk_overlap,
+    step=50,
+    help="Overlap between consecutive chunks",
+    key="chunk_overlap_input",
+    on_change=on_chunk_config_change
+)
+
+# Validation warning
+if chunk_overlap >= chunk_size:
+    st.sidebar.error("⚠️ Chunk overlap must be less than chunk size!")
 
 # Update API key configuration and initialize controller
 if openai_api_key:
@@ -168,7 +259,13 @@ else:
     st.info("input_files directory is empty.")
 
 # Add button to process existing files and create index
-if st.button("🔄 Create Index", disabled=not st.session_state.initialized):
+create_index_disabled = not st.session_state.initialized
+if st.session_state.config_changed:
+    button_text = "🔄 Rebuild Index (Config Changed)"
+else:
+    button_text = "🔄 Create Index"
+
+if st.button(button_text, disabled=create_index_disabled):
     if st.session_state.controller:
         with st.spinner("Processing documents and creating index..."):
             success, error_msg = st.session_state.controller.load_and_process_documents()
@@ -177,6 +274,8 @@ if st.button("🔄 Create Index", disabled=not st.session_state.initialized):
                 save_success, save_error = st.session_state.controller.save_index()
                 if save_success:
                     st.success("✅ Successfully processed documents and created index!")
+                    # Reset config changed flag
+                    st.session_state.config_changed = False
                     # Show stats
                     stats = st.session_state.controller.get_stats()
                     st.info(f"📊 Index contains {stats.get('document_count', 0)} chunks")
@@ -186,14 +285,23 @@ if st.button("🔄 Create Index", disabled=not st.session_state.initialized):
                 st.error(f"❌ Error: {error_msg}")
 
 # Display current configuration and statistics
+st.sidebar.markdown("---")
 st.sidebar.markdown("### ⚙️ Current Settings")
-st.sidebar.info(f"Active Model: {st.session_state.selected_model_key}")
+st.sidebar.info(f"**Active Model:** {st.session_state.selected_model_key}")
+
+# Show chunk configuration status
+if st.session_state.config_changed:
+    st.sidebar.warning(f"⚠️ **Config Changed - Rebuild Required**\nChunk Size: {st.session_state.config.chunk_size}\nChunk Overlap: {st.session_state.config.chunk_overlap}")
+else:
+    st.sidebar.success(f"**Document Processing Config:**\nChunk Size: {st.session_state.config.chunk_size}\nChunk Overlap: {st.session_state.config.chunk_overlap}")
 
 if st.session_state.controller:
     stats = st.session_state.controller.get_stats()
     if stats.get('document_count', 0) > 0:
         st.sidebar.markdown("### 📊 Vector Store Stats")
-        st.sidebar.info(f"Documents: {stats.get('document_count', 0)}\nEmbedding Model: {stats.get('embedding_model', 'N/A')}")
+        st.sidebar.info(f"Chunks: {stats.get('document_count', 0)}\nEmbedding Model: {stats.get('embedding_model', 'N/A')}\nEmbedding Dimensions: {stats.get('embedding_dimension', 'N/A')}")
+    elif st.session_state.initialized:
+        st.sidebar.info("No vector index found")
 
 def generate_response(input_text):
     """Generate response using the RAG controller."""
@@ -224,23 +332,33 @@ def generate_response(input_text):
         response = st.session_state.controller.chat(input_text)
         st.info(response)
 
-# Chat interface
-st.header("💬 Chat with AI")
-with st.form("my_form"):
-    text = st.text_area(
-        "Enter text:",
-        "How many moons does Pluto have?",
-    )
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        search_k = st.number_input("Results", min_value=1, max_value=10, value=4)
-    with col2:
-        use_mmr = st.checkbox("Use MMR (diverse results)", value=False)
+# Chat interface - only show if index exists and config hasn't changed
+if st.session_state.controller and st.session_state.initialized:
+    stats = st.session_state.controller.get_stats()
+    has_index = stats.get('document_count', 0) > 0
     
-    submitted = st.form_submit_button("Submit")
-    if not openai_api_key.startswith("sk-"):
-        st.warning("Please enter your OpenAI API key!", icon="⚠")
-    if submitted and openai_api_key.startswith("sk-") and st.session_state.initialized:
-        # Update search settings
-        st.session_state.controller.update_config(default_search_k=search_k)
-        generate_response(text)
+    if not has_index or st.session_state.config_changed:
+        if st.session_state.config_changed:
+            st.info("⚠️ Document processing configuration has changed. Please rebuild the index before chatting.")
+        else:
+            st.info("📊 No vector index found. Please create an index first by clicking the '🔄 Create Index' button above.")
+    else:
+        st.header("💬 Chat with AI")
+        with st.form("my_form"):
+            text = st.text_area(
+                "Enter text:",
+                "How many moons does Pluto have?",
+            )
+            col1, col2 = st.columns([1, 5])
+            with col1:
+                search_k = st.number_input("Results", min_value=1, max_value=10, value=4)
+            with col2:
+                use_mmr = st.checkbox("Use MMR (diverse results)", value=False)
+            
+            submitted = st.form_submit_button("Submit")
+            if submitted:
+                # Update search settings
+                st.session_state.controller.update_config(default_search_k=search_k)
+                generate_response(text)
+else:
+    st.info("🔑 Please enter your OpenAI API key to enable chat functionality.")

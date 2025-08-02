@@ -42,6 +42,56 @@ class Config:
         """Update the chat model."""
         self.chat_model = model
     
+    def update_chunk_config(self, chunk_size: int = None, chunk_overlap: int = None) -> tuple[bool, str]:
+        """
+        Update chunk size and/or overlap with validation.
+        
+        Args:
+            chunk_size: New chunk size (optional)
+            chunk_overlap: New chunk overlap (optional)
+            
+        Returns:
+            tuple: (success, error_message)
+        """
+        # Store original values for rollback
+        original_size = self.chunk_size
+        original_overlap = self.chunk_overlap
+        
+        # Update values if provided
+        if chunk_size is not None:
+            self.chunk_size = chunk_size
+        if chunk_overlap is not None:
+            self.chunk_overlap = chunk_overlap
+        
+        # Validate the new configuration
+        is_valid, error_msg = self._validate_chunk_config()
+        
+        if not is_valid:
+            # Rollback to original values
+            self.chunk_size = original_size
+            self.chunk_overlap = original_overlap
+            return False, error_msg
+        
+        return True, ""
+    
+    def _validate_chunk_config(self) -> tuple[bool, str]:
+        """
+        Validate chunk configuration parameters.
+        
+        Returns:
+            tuple: (is_valid, error_message)
+        """
+        if self.chunk_size <= 0:
+            return False, "Chunk size must be positive"
+        
+        if self.chunk_overlap < 0:
+            return False, "Chunk overlap cannot be negative"
+        
+        if self.chunk_overlap >= self.chunk_size:
+            return False, "Chunk overlap must be less than chunk size"
+        
+        return True, ""
+    
     def is_configured(self) -> bool:
         """Check if the essential configuration is set."""
         return bool(self.openai_api_key and self.openai_api_key.startswith("sk-"))
@@ -59,13 +109,9 @@ class Config:
         if not self.openai_api_key.startswith("sk-"):
             return False, "Invalid OpenAI API key format"
         
-        if self.chunk_size <= 0:
-            return False, "Chunk size must be positive"
-        
-        if self.chunk_overlap < 0:
-            return False, "Chunk overlap cannot be negative"
-        
-        if self.chunk_overlap >= self.chunk_size:
-            return False, "Chunk overlap must be less than chunk size"
+        # Validate chunk configuration
+        chunk_valid, chunk_error = self._validate_chunk_config()
+        if not chunk_valid:
+            return False, chunk_error
         
         return True, ""
